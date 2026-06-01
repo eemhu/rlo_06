@@ -52,6 +52,6 @@ public final class VersionClaim implements Claim<Integer> {
             strBuilder.append(thirdDigitResult.value());
         }
 
-        return new ResultImpl<>("VERSION", Integer.parseInt(strBuilder.toString()));
+        return new ResultImpl<>(ResultName.VERSION, Integer.parseInt(strBuilder.toString()));
     }
 }

@@ -7,7 +7,7 @@ public final class ResultStub<T> implements Result<T> {
     }
 
     @Override
-    public String name() {
+    public ResultName name() {
         throw new UnsupportedOperationException("Stub result");
     }
 

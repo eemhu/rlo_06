@@ -29,7 +29,7 @@ public final class VersionClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(123, result.value());
-            Assertions.assertEquals("VERSION", result.name());
+            Assertions.assertEquals(ResultName.VERSION, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(3, leases.size());
@@ -54,7 +54,7 @@ public final class VersionClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(12, result.value());
-            Assertions.assertEquals("VERSION", result.name());
+            Assertions.assertEquals(ResultName.VERSION, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(2, leases.size());
@@ -77,7 +77,7 @@ public final class VersionClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(1, result.value());
-            Assertions.assertEquals("VERSION", result.name());
+            Assertions.assertEquals(ResultName.VERSION, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(1, leases.size());

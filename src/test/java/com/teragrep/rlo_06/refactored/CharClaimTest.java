@@ -27,7 +27,7 @@ public final class CharClaimTest {
 
             final Result<Character> result = claim.advance(leases);
             Assertions.assertEquals(' ', result.value());
-            Assertions.assertEquals("char", result.name());
+            Assertions.assertEquals(ResultName.CHAR, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());

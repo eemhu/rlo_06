@@ -1,10 +1,7 @@
 package com.teragrep.rlo_06.refactored.generic;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
-import com.teragrep.rlo_06.refactored.Claim;
-import com.teragrep.rlo_06.refactored.ClaimFailedException;
-import com.teragrep.rlo_06.refactored.Result;
-import com.teragrep.rlo_06.refactored.ResultImpl;
+import com.teragrep.rlo_06.refactored.*;
 
 import java.lang.foreign.MemorySegment;
 import java.util.List;
@@ -24,7 +21,7 @@ public final class CharClaim implements Claim<Character> {
 
                 if (b == targetChar) {
                     // Claim successful
-                    return new ResultImpl<>("char", targetChar);
+                    return new ResultImpl<>(ResultName.CHAR, targetChar);
                 } else {
                     lease.reset();
                     throw new ClaimFailedException(getClass(), "expected " + targetChar + " but found " + Character.toString(b));

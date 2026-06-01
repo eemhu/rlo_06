@@ -28,7 +28,7 @@ public final class DigitClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(0, result.value());
-            Assertions.assertEquals("digit", result.name());
+            Assertions.assertEquals(ResultName.DIGIT, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());
@@ -48,7 +48,7 @@ public final class DigitClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(5, result.value());
-            Assertions.assertEquals("digit", result.name());
+            Assertions.assertEquals(ResultName.DIGIT, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());
@@ -68,7 +68,7 @@ public final class DigitClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(5, result.value());
-            Assertions.assertEquals("digit", result.name());
+            Assertions.assertEquals(ResultName.DIGIT, result.name());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());

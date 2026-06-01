@@ -27,7 +27,7 @@ public final class PriClaimTest {
 
             final Result<Integer> result = claim.advance(leases);
             Assertions.assertEquals(120, result.value());
-            Assertions.assertEquals("PRIVAL", result.name());
+            Assertions.assertEquals(ResultName.PRI, result.name());
 
             // Success should advance the leases
             // Each lease has two bytes, so we should have 3 leases.

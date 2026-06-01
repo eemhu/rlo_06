@@ -2,10 +2,10 @@ package com.teragrep.rlo_06.refactored;
 
 public final class ResultImpl<T> implements Result<T> {
 
-    private final String name;
+    private final ResultName name;
     private final T value;
 
-    public ResultImpl(final String name, final T value) {
+    public ResultImpl(final ResultName name, final T value) {
         this.name = name;
         this.value = value;
     }
@@ -16,7 +16,7 @@ public final class ResultImpl<T> implements Result<T> {
     }
 
     @Override
-    public String name() {
+    public ResultName name() {
         return name;
     }
 

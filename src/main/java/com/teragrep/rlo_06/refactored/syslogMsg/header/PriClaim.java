@@ -31,7 +31,7 @@ public final class PriClaim implements Claim<Integer> {
                     throw new ClaimFailedException(getClass(), "expected '<' but found " + Character.toString(b));
                 } else if (b == '>' && !priVal.isEmpty()) {
                     // tag done, claim ok?
-                    return new ResultImpl<>("PRIVAL", Integer.parseInt(priVal.toString()));
+                    return new ResultImpl<>(ResultName.PRI, Integer.parseInt(priVal.toString()));
                 } else if (Character.isDigit(b)) {
                     // inside tags and number
                     priVal.append((char)b);

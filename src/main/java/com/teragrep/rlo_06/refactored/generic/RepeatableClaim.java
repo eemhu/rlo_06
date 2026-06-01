@@ -1,10 +1,7 @@
 package com.teragrep.rlo_06.refactored.generic;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
-import com.teragrep.rlo_06.refactored.Claim;
-import com.teragrep.rlo_06.refactored.ClaimFailedException;
-import com.teragrep.rlo_06.refactored.Result;
-import com.teragrep.rlo_06.refactored.ResultImpl;
+import com.teragrep.rlo_06.refactored.*;
 
 import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
@@ -41,6 +38,6 @@ public class RepeatableClaim<T> implements Claim<List<T>> {
             }
         }
 
-        return new ResultImpl<>("repeatable", results);
+        return new ResultImpl<>(ResultName.REPEATABLE, results);
     }
 }
