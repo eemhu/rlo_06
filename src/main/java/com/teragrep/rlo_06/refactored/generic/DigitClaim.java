@@ -35,7 +35,7 @@ public final class DigitClaim implements Claim<Integer> {
                     return new ResultImpl<>("digit", Character.digit(b, 10));
                 } else {
                     lease.reset();
-                    throw new ClaimFailedException(getClass(), "expected digit but found " + Character.toString(b));
+                    throw new ClaimFailedException(getClass(), "expected " + (nonZeroDigitsOnly ? "non-zero" : "") + " digit but found " + Character.toString(b));
                 }
             }
         }
