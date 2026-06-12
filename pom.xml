@@ -46,8 +46,8 @@
     <repository.id>releases</repository.id>
     <repository.url>http://localhost/repository/releases/</repository.url>
     <revision>0.0.1</revision>
-    <teragrep.buf_01.version>0.0.1-SNAPSHOT</teragrep.buf_01.version>
     <sha1></sha1>
+    <teragrep.buf_01.version>0.0.1-SNAPSHOT</teragrep.buf_01.version>
   </properties>
   <dependencies>
     <dependency>
