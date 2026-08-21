@@ -46,55 +46,71 @@
 package com.teragrep.rlo_06.refactored.generic;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
+import com.teragrep.buf_01.buffer.lease.TrackedMemorySegmentLease;
 import com.teragrep.rlo_06.refactored.*;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 
 import java.lang.foreign.MemorySegment;
-import java.util.ArrayList;
-import java.util.List;
 
-public class RepeatableClaim<T> implements Claim<List<T>> {
+public final class CharFragment implements Fragment {
 
-    private final Claim<T> origin;
-    private final int minimum;
-    private final int maximum;
+    private final char targetChar;
+    private final TrackedLease<MemorySegment>[] applicableLeases;
+    private final FragmentState state;
 
-    public RepeatableClaim(Claim<T> origin, final int minimum) {
-        this(origin, minimum, -1);
+    public CharFragment(final char targetChar) {
+        this(targetChar, new TrackedMemorySegmentLease[0]);
     }
 
-    public RepeatableClaim(final Claim<T> origin, final int minimum, final int maximum) {
-        this.origin = origin;
-        this.minimum = minimum;
-        this.maximum = maximum;
+    public CharFragment(final char targetChar, final TrackedLease<MemorySegment>[] applicableLeases) {
+        this(targetChar, applicableLeases, FragmentState.IN_PROGRESS);
+    }
+
+    public CharFragment(final char targetChar, final TrackedLease<MemorySegment>[] applicableLeases, final FragmentState state) {
+        this.targetChar = targetChar;
+        this.applicableLeases = applicableLeases;
+        this.state = state;
     }
 
     @Override
-    public Result<List<T>> advance(final List<TrackedLease<MemorySegment>> src) {
-        final List<T> results = new ArrayList<>();
-        int successes = 0;
-        while (true) {
-            try {
-                final Result<T> res = origin.advance(src);
-                results.add(res.value());
-                successes++;
-            }
-            catch (final ClaimFailedException e) {
-                if (successes >= minimum && maximum == -1) {
-                    break;
-                }
+    public FragmentState state() {
+        return state;
+    }
 
-                if (successes >= minimum && successes <= maximum) {
-                    break;
-                }
+    @Override
+    public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
+        FragmentState newState;
+        final TrackedLease<MemorySegment>[] newApplicableLeases = new TrackedMemorySegmentLease[1];
 
-                throw new ClaimFailedException(
-                        getClass(),
-                        "minimum repeated <" + minimum + "> required, instead was <" + successes + ">",
-                        e
-                );
+        if (trackedLease.hasNext()) {
+            trackedLease.mark();
+            final byte b = trackedLease.next();
+            System.out.println("char claim: " + (char)b);
+
+            if (b == targetChar) {
+                // Claim successful
+                newApplicableLeases[0] = trackedLease.sliceWithLength(trackedLease.currentPosition() - 1, 1);
+                newState = FragmentState.SUCCESSFUL;
             }
+            else {
+                trackedLease.reset();
+                newState = FragmentState.FAILED;
+            }
+        } else {
+            newState = FragmentState.FAILED;
         }
 
-        return new ResultImpl<>(ResultName.REPEATABLE, results);
+        return new CharFragment(targetChar, newApplicableLeases, newState);
+    }
+
+    @Override
+    public TrackedLease<MemorySegment>[] leases() {
+        return applicableLeases;
+    }
+
+    @Override
+    public boolean isStub() {
+        return false;
     }
 }

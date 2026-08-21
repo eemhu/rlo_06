@@ -46,48 +46,78 @@
 package com.teragrep.rlo_06.refactored.generic;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
+import com.teragrep.buf_01.buffer.lease.TrackedMemorySegmentLease;
 import com.teragrep.rlo_06.refactored.*;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
-public final class DigitClaim implements Claim<TrackedLease<MemorySegment>> {
+public final class DigitFragment implements Fragment {
 
     private final boolean nonZeroDigitsOnly;
 
-    public DigitClaim() {
+    private final TrackedLease<MemorySegment>[] applicableLeases;
+    private final FragmentState state;
+
+    public DigitFragment() {
         this(false);
     }
 
-    public DigitClaim(final boolean nonZeroDigitsOnly) {
+    public DigitFragment(final boolean nonZeroDigitsOnly) {
+        this(nonZeroDigitsOnly, new TrackedMemorySegmentLease[0], FragmentState.IN_PROGRESS);
+    }
+
+    public DigitFragment(final boolean nonZeroDigitsOnly, final TrackedLease<MemorySegment>[] applicableLeases, final FragmentState state) {
         this.nonZeroDigitsOnly = nonZeroDigitsOnly;
+        this.applicableLeases = applicableLeases;
+        this.state = state;
     }
 
     @Override
-    public Result<TrackedLease<MemorySegment>> advance(final List<TrackedLease<MemorySegment>> src) {
-        for (final TrackedLease<MemorySegment> lease : src) {
-            if (lease.hasNext()) {
-                lease.mark();
-                final byte b = lease.next();
+    public FragmentState state() {
+        return state;
+    }
 
-                if (Character.isDigit(b) && b != '0' && nonZeroDigitsOnly) {
-                    // Claim successful
-                    return new ResultImpl<>(ResultName.DIGIT, lease.sliceWithLength(lease.currentPosition() - 1, 1L));
-                }
-                else if (Character.isDigit(b) && !nonZeroDigitsOnly) {
-                    // Claim successful
-                    return new ResultImpl<>(ResultName.DIGIT, lease.sliceWithLength(lease.currentPosition() - 1, 1));
-                }
-                else {
-                    lease.reset();
-                    throw new ClaimFailedException(
-                            getClass(),
-                            "expected " + (nonZeroDigitsOnly ? "non-zero" : "") + " digit but found "
-                                    + Character.toString(b)
-                    );
-                }
+    @Override
+    public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
+        trackedLease.mark();
+        FragmentState newState;
+        TrackedLease<MemorySegment>[] newApplicableLeases = new TrackedMemorySegmentLease[1];
+        if (trackedLease.hasNext()) {
+            // check next
+            final byte b = trackedLease.next();
+            if (Character.isDigit(b) && b != '0' && nonZeroDigitsOnly) {
+                newState = FragmentState.SUCCESSFUL;
+                newApplicableLeases[0] = trackedLease.sliceWithLength(trackedLease.currentPosition() - 1, 1L);
+
+            } else if (Character.isDigit(b) && !nonZeroDigitsOnly) {
+                newState = FragmentState.SUCCESSFUL;
+                newApplicableLeases[0] = trackedLease.sliceWithLength(trackedLease.currentPosition() - 1, 1);
+            }
+            else {
+                // fail, non-digit
+                newState = FragmentState.FAILED;
+                trackedLease.reset();
             }
         }
-        throw new ClaimFailedException(getClass(), "expected digit but found no next byte");
+        else {
+            // fail, no next
+            newState = FragmentState.FAILED;
+            trackedLease.reset();
+        }
+
+        return new DigitFragment(nonZeroDigitsOnly, newApplicableLeases, newState);
+    }
+
+    @Override
+    public TrackedLease<MemorySegment>[] leases() {
+        return applicableLeases;
+    }
+
+    @Override
+    public boolean isStub() {
+        return false;
     }
 }

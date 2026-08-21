@@ -50,7 +50,9 @@ import com.teragrep.buf_01.buffer.lease.TrackedLease;
 import com.teragrep.buf_01.buffer.pool.OpeningPool;
 import com.teragrep.buf_01.buffer.supply.ArenaMemorySegmentLeaseSupplier;
 import com.teragrep.poj_01.pool.UnboundPool;
-import com.teragrep.rlo_06.refactored.syslogMsg.header.PriClaim;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
+import com.teragrep.rlo_06.refactored.syslogMsg.header.PriorityFragment;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -58,11 +60,11 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
-public final class PriClaimTest {
+public final class PriorityFragmentTest {
 
     @Test
     void testSuccess() {
-        final Claim<List<TrackedLease<MemorySegment>>> claim = new PriClaim();
+        Fragment priorityFragment = new PriorityFragment();
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -71,14 +73,18 @@ public final class PriClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("<120>", pool).toList();
 
-            final Result<List<TrackedLease<MemorySegment>>> result = claim.advance(leases);
-            Assertions.assertEquals(3, result.value().size());
-            Assertions.assertEquals('<', result.value().get(0).next());
-            Assertions.assertEquals('1', result.value().get(0).next());
-            Assertions.assertEquals('2', result.value().get(1).next());
-            Assertions.assertEquals('0', result.value().get(1).next());
-            Assertions.assertEquals('>', result.value().get(2).next());
-            Assertions.assertEquals(ResultName.PRI, result.name());
+            for (final TrackedLease<MemorySegment> lease : leases) {
+                priorityFragment = priorityFragment.apply(lease);
+            }
+
+            Assertions.assertEquals(FragmentState.SUCCESSFUL, priorityFragment.state());
+
+            Assertions.assertEquals(3, priorityFragment.leases().length);
+            Assertions.assertEquals('<', priorityFragment.leases()[0].next());
+            Assertions.assertEquals('1', priorityFragment.leases()[0].next());
+            Assertions.assertEquals('2', priorityFragment.leases()[1].next());
+            Assertions.assertEquals('0', priorityFragment.leases()[1].next());
+            Assertions.assertEquals('>', priorityFragment.leases()[2].next());
 
             // Success should advance the leases
             // Each lease has two bytes, so we should have 3 leases.
@@ -92,7 +98,7 @@ public final class PriClaimTest {
 
     @Test
     void testFailure() {
-        final Claim<List<TrackedLease<MemorySegment>>> claim = new PriClaim();
+        Fragment claim = new PriorityFragment();
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -101,7 +107,11 @@ public final class PriClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("<abc", pool).toList();
 
-            Assertions.assertThrows(ClaimFailedException.class, () -> claim.advance(leases));
+            for (final TrackedLease<MemorySegment> lease : leases) {
+                claim = claim.apply(lease);
+            }
+
+            Assertions.assertEquals(FragmentState.FAILED, claim.state());
             // Failure should not advance the leases
             {
                 int i;

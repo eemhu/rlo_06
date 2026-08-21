@@ -50,50 +50,72 @@ import com.teragrep.buf_01.buffer.lease.TrackedLease;
 import com.teragrep.buf_01.buffer.pool.OpeningPool;
 import com.teragrep.buf_01.buffer.supply.ArenaMemorySegmentLeaseSupplier;
 import com.teragrep.poj_01.pool.UnboundPool;
-import com.teragrep.rlo_06.refactored.generic.CharClaim;
+import com.teragrep.rlo_06.refactored.generic.CharFragment;
+import com.teragrep.rlo_06.refactored.generic.RepeatableFragment;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
 import java.util.List;
 
-public final class CharClaimTest {
+public final class RepeatableFragmentTest {
 
     @Test
     void testSuccess() {
-        final Claim<TrackedLease<MemorySegment>> claim = new CharClaim(' ');
+        final Fragment originFragment = new CharFragment('a');
 
         try (
                 final OpeningPool pool = new OpeningPool(
-                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 1), new MemorySegmentLeaseStub())
+                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 2), new MemorySegmentLeaseStub())
                 )
         ) {
-            final List<TrackedLease<MemorySegment>> leases = new StringToLease(" abc", pool).toList();
+            final List<TrackedLease<MemorySegment>> leases = new StringToLease("aaab", pool).toList();
 
-            final Result<TrackedLease<MemorySegment>> result = claim.advance(leases);
-            Assertions.assertEquals(' ', result.value().next());
-            Assertions.assertEquals(ResultName.CHAR, result.name());
+            Fragment repeatableFragment = new RepeatableFragment(originFragment, 3);
 
+            for (final TrackedLease<MemorySegment> lease : leases) {
+                repeatableFragment = repeatableFragment.apply(lease);
+            }
+
+            Assertions.assertEquals(FragmentState.SUCCESSFUL,  repeatableFragment.state());
             // Success should advance the lease
-            Assertions.assertEquals(1L, leases.getFirst().currentPosition());
+            Assertions.assertEquals(2, leases.size());
+            Assertions.assertEquals(2L, leases.get(0).currentPosition());
+            Assertions.assertEquals(1L, leases.get(1).currentPosition());
+
+            Assertions.assertEquals(3L, repeatableFragment.leases().length);
+            Assertions.assertEquals('a', repeatableFragment.leases()[0].next());
+            Assertions.assertEquals('a', repeatableFragment.leases()[1].next());
+            Assertions.assertEquals('a', repeatableFragment.leases()[2].next());
         }
     }
 
     @Test
-    void testFailure() {
-        final Claim<TrackedLease<MemorySegment>> claim = new CharClaim(' ');
+    void testFailTooFew() {
+        final Fragment fragment = new CharFragment('a');
 
         try (
                 final OpeningPool pool = new OpeningPool(
-                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 1), new MemorySegmentLeaseStub())
+                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 2), new MemorySegmentLeaseStub())
                 )
         ) {
-            final List<TrackedLease<MemorySegment>> leases = new StringToLease("abc", pool).toList();
+            final List<TrackedLease<MemorySegment>> leases = new StringToLease("aaab", pool).toList();
 
-            Assertions.assertThrows(ClaimFailedException.class, () -> claim.advance(leases));
-            // Failure should not advance the lease
-            Assertions.assertEquals(0L, leases.getFirst().currentPosition());
+            Fragment repeatableFragment = new RepeatableFragment(fragment, 4);
+            for (final TrackedLease<MemorySegment> lease : leases) {
+                repeatableFragment = repeatableFragment.apply(lease);
+            }
+
+            Assertions.assertEquals(FragmentState.FAILED,  repeatableFragment.state());
+
+            // Failure shouldn't advance the lease
+            Assertions.assertEquals(2, leases.size());
+            Assertions.assertEquals(0L, leases.get(0).currentPosition());
+            Assertions.assertEquals(0L, leases.get(1).currentPosition());
         }
     }
 }

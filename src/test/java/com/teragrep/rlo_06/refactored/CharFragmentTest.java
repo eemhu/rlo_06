@@ -50,8 +50,9 @@ import com.teragrep.buf_01.buffer.lease.TrackedLease;
 import com.teragrep.buf_01.buffer.pool.OpeningPool;
 import com.teragrep.buf_01.buffer.supply.ArenaMemorySegmentLeaseSupplier;
 import com.teragrep.poj_01.pool.UnboundPool;
-import com.teragrep.rlo_06.refactored.generic.CharClaim;
-import com.teragrep.rlo_06.refactored.generic.RepeatableClaim;
+import com.teragrep.rlo_06.refactored.generic.CharFragment;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -59,48 +60,52 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
-public final class RepeatableClaimTest {
+public final class CharFragmentTest {
 
     @Test
     void testSuccess() {
-        final Claim<TrackedLease<MemorySegment>> claim = new CharClaim('a');
+        Fragment fragment = new CharFragment(' ');
 
         try (
                 final OpeningPool pool = new OpeningPool(
-                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 2), new MemorySegmentLeaseStub())
+                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 1), new MemorySegmentLeaseStub())
                 )
         ) {
-            final List<TrackedLease<MemorySegment>> leases = new StringToLease("aaa", pool).toList();
+            final List<TrackedLease<MemorySegment>> leases = new StringToLease(" abc", pool).toList();
 
-            final Result<List<TrackedLease<MemorySegment>>> repeatableResult = new RepeatableClaim<>(claim, 3)
-                    .advance(leases);
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
 
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+
+            Assertions.assertEquals(' ', fragment.leases()[0].next());
+            Assertions.assertEquals(FragmentState.SUCCESSFUL, fragment.state());
             // Success should advance the lease
-            Assertions.assertEquals(2, leases.size());
-            Assertions.assertEquals(2L, leases.get(0).currentPosition());
-            Assertions.assertEquals(1L, leases.get(1).currentPosition());
-
-            Assertions.assertEquals(3L, repeatableResult.value().size());
-            Assertions.assertEquals('a', repeatableResult.value().get(0).next());
-            Assertions.assertEquals('a', repeatableResult.value().get(1).next());
-            Assertions.assertEquals('a', repeatableResult.value().get(2).next());
+            Assertions.assertEquals(1L, leases.getFirst().currentPosition());
         }
     }
 
     @Test
-    void testFailTooFew() {
-        final Claim<TrackedLease<MemorySegment>> claim = new CharClaim('a');
+    void testFailure() {
+        Fragment fragment = new CharFragment(' ');
 
         try (
                 final OpeningPool pool = new OpeningPool(
-                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 2), new MemorySegmentLeaseStub())
+                        new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 1), new MemorySegmentLeaseStub())
                 )
         ) {
-            final List<TrackedLease<MemorySegment>> leases = new StringToLease("aaa", pool).toList();
+            final List<TrackedLease<MemorySegment>> leases = new StringToLease("abc", pool).toList();
 
-            Assertions.assertThrows(ClaimFailedException.class, () -> new RepeatableClaim<>(claim, 4).advance(leases));
+            for (TrackedLease<MemorySegment> lease : leases) {
+               fragment = fragment.apply(lease);
+            }
 
-            // FIXME: Failure should not advance the lease
+            // Failure should not advance the lease
+            Assertions.assertEquals(FragmentState.FAILED, fragment.state());
+            Assertions.assertEquals(0L, leases.getFirst().currentPosition());
         }
     }
 }

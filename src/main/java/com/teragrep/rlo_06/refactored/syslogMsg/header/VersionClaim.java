@@ -46,8 +46,11 @@
 package com.teragrep.rlo_06.refactored.syslogMsg.header;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
+import com.teragrep.buf_01.buffer.lease.TrackedMemorySegmentLease;
 import com.teragrep.rlo_06.refactored.*;
-import com.teragrep.rlo_06.refactored.generic.DigitClaim;
+import com.teragrep.rlo_06.refactored.generic.DigitFragment;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 
 import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
@@ -56,14 +59,35 @@ import java.util.List;
 /**
  * VERSION = NONZERO-DIGIT 0*2DIGIT
  */
-public final class VersionClaim implements Claim<List<TrackedLease<MemorySegment>>> {
+public final class VersionClaim implements Fragment {
 
     private static final Result<TrackedLease<MemorySegment>> resultLeaseStub = new ResultStub<>();
 
+    private final TrackedLease<MemorySegment>[] applicableLeases;
+    private final FragmentState state;
+
+    public VersionClaim() {
+        this(new TrackedMemorySegmentLease[0]);
+    }
+
+    public VersionClaim(final TrackedLease<MemorySegment>[] applicableLeases) {
+        this(applicableLeases, FragmentState.IN_PROGRESS);
+    }
+
+    public VersionClaim(final TrackedLease<MemorySegment>[] applicableLeases, final FragmentState state) {
+        this.applicableLeases = applicableLeases;
+        this.state = state;
+    }
+
     @Override
-    public Result<List<TrackedLease<MemorySegment>>> advance(final List<TrackedLease<MemorySegment>> src) {
-        final Claim<TrackedLease<MemorySegment>> nonZeroClaim = new DigitClaim(true);
-        final Claim<TrackedLease<MemorySegment>> digitClaim = new DigitClaim(false);
+    public FragmentState state() {
+        return state;
+    }
+
+    @Override
+    public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
+      /*  final Claim<TrackedLease<MemorySegment>> nonZeroClaim = new DigitFragment(true);
+        final Claim<TrackedLease<MemorySegment>> digitClaim = new DigitFragment(false);
 
         final Result<TrackedLease<MemorySegment>> firstDigitResult;
         try {
@@ -104,6 +128,17 @@ public final class VersionClaim implements Claim<List<TrackedLease<MemorySegment
             resultList.add(thirdDigitResult.value());
         }
 
-        return new ResultImpl<>(ResultName.VERSION, resultList);
+        return new ResultImpl<>(ResultName.VERSION, resultList); */
+        return null;
+    }
+
+    @Override
+    public TrackedLease<MemorySegment>[] leases() {
+        return applicableLeases;
+    }
+
+    @Override
+    public boolean isStub() {
+        return false;
     }
 }

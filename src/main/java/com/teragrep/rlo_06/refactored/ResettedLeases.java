@@ -49,14 +49,19 @@ import com.teragrep.buf_01.buffer.lease.TrackedLease;
 
 import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 public class ResettedLeases {
 
-    private final List<TrackedLease<MemorySegment>> origin;
+    private final TrackedLease<MemorySegment>[] origin;
 
     public ResettedLeases(final List<TrackedLease<MemorySegment>> origin) {
+        this(origin.toArray(new TrackedLease[0]));
+    }
+
+    public ResettedLeases(final TrackedLease<MemorySegment>[] origin) {
         this.origin = origin;
     }
 
@@ -68,14 +73,14 @@ public class ResettedLeases {
      */
     public void resetBetween(int indexFrom, int indexTo) {
         for (int i = indexFrom; i <= indexTo; i++) {
-            origin.get(i).reset();
+            origin[i].reset();
         }
     }
 
     public List<TrackedLease<MemorySegment>> sliceBetween(int indexFrom, int indexTo) {
         final List<TrackedLease<MemorySegment>> slices = new ArrayList<>(indexTo - indexFrom + 1);
         for (int i = indexFrom; i <= indexTo; i++) {
-            final TrackedLease<MemorySegment> lease = origin.get(i);
+            final TrackedLease<MemorySegment> lease = origin[i];
             slices.add(lease.sliceWithLength(lease.currentMark(), lease.currentPosition() - lease.currentMark()));
         }
         return slices;
@@ -87,7 +92,7 @@ public class ResettedLeases {
             return false;
         }
         final ResettedLeases that = (ResettedLeases) o;
-        return Objects.equals(origin, that.origin);
+        return Arrays.equals(origin, that.origin);
     }
 
     @Override

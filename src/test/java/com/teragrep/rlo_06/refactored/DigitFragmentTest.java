@@ -50,7 +50,9 @@ import com.teragrep.buf_01.buffer.lease.TrackedLease;
 import com.teragrep.buf_01.buffer.pool.OpeningPool;
 import com.teragrep.buf_01.buffer.supply.ArenaMemorySegmentLeaseSupplier;
 import com.teragrep.poj_01.pool.UnboundPool;
-import com.teragrep.rlo_06.refactored.generic.DigitClaim;
+import com.teragrep.rlo_06.refactored.generic.DigitFragment;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -58,11 +60,11 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 
-public final class DigitClaimTest {
+public final class DigitFragmentTest {
 
     @Test
     void testSuccessWithZero() {
-        final Claim<TrackedLease<MemorySegment>> claim = new DigitClaim();
+        Fragment fragment = new DigitFragment();
         try (
                 final OpeningPool pool = new OpeningPool(
                         new UnboundPool<>(new ArenaMemorySegmentLeaseSupplier(Arena.ofShared(), 1), new MemorySegmentLeaseStub())
@@ -70,10 +72,14 @@ public final class DigitClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("04", pool).toList();
 
-            final Result<TrackedLease<MemorySegment>> result = claim.advance(leases);
-            Assertions.assertEquals((byte) '0', result.value().next());
-            Assertions.assertEquals(ResultName.DIGIT, result.name());
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
 
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+            Assertions.assertEquals((byte) '0', fragment.leases()[0].next());
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());
         }
@@ -81,7 +87,7 @@ public final class DigitClaimTest {
 
     @Test
     void testSuccessWithOther() {
-        final Claim<TrackedLease<MemorySegment>> claim = new DigitClaim();
+        Fragment fragment = new DigitFragment();
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -90,9 +96,15 @@ public final class DigitClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("54", pool).toList();
 
-            final Result<TrackedLease<MemorySegment>> result = claim.advance(leases);
-            Assertions.assertEquals((byte) '5', result.value().next());
-            Assertions.assertEquals(ResultName.DIGIT, result.name());
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
+
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+
+            Assertions.assertEquals((byte) '5', fragment.leases()[0].next());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());
@@ -101,7 +113,7 @@ public final class DigitClaimTest {
 
     @Test
     void testSuccessNonZeroOnlyWithOther() {
-        final Claim<TrackedLease<MemorySegment>> claim = new DigitClaim(true);
+        Fragment fragment = new DigitFragment(true);
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -110,9 +122,15 @@ public final class DigitClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("54", pool).toList();
 
-            final Result<TrackedLease<MemorySegment>> result = claim.advance(leases);
-            Assertions.assertEquals((byte) '5', result.value().next());
-            Assertions.assertEquals(ResultName.DIGIT, result.name());
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
+
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+
+            Assertions.assertEquals((byte) '5', fragment.leases()[0].next());
 
             // Success should advance the lease
             Assertions.assertEquals(1L, leases.getFirst().currentPosition());
@@ -121,7 +139,7 @@ public final class DigitClaimTest {
 
     @Test
     void testFailureNonZeroOnly() {
-        final Claim<TrackedLease<MemorySegment>> claim = new DigitClaim(true);
+        Fragment fragment = new DigitFragment(true);
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -130,8 +148,15 @@ public final class DigitClaimTest {
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("04", pool).toList();
 
-            Assertions.assertThrows(ClaimFailedException.class, () -> claim.advance(leases));
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
 
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+
+            Assertions.assertEquals(FragmentState.FAILED, fragment.state());
             // Failure should not advance the lease
             Assertions.assertEquals(0L, leases.getFirst().currentPosition());
         }
@@ -139,7 +164,7 @@ public final class DigitClaimTest {
 
     @Test
     void testFailure() {
-        final Claim<TrackedLease<MemorySegment>> claim = new DigitClaim();
+        Fragment fragment = new DigitFragment();
 
         try (
                 final OpeningPool pool = new OpeningPool(
@@ -147,8 +172,14 @@ public final class DigitClaimTest {
                 )
         ) {
             final List<TrackedLease<MemorySegment>> leases = new StringToLease("x4", pool).toList();
+            for (TrackedLease<MemorySegment> lease : leases) {
+                fragment = fragment.apply(lease);
 
-            Assertions.assertThrows(ClaimFailedException.class, () -> claim.advance(leases));
+                if (fragment.state() != FragmentState.IN_PROGRESS) {
+                    break;
+                }
+            }
+            Assertions.assertEquals(FragmentState.FAILED, fragment.state());
 
             // Failure should not advance the lease
             Assertions.assertEquals(0L, leases.getFirst().currentPosition());

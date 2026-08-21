@@ -46,17 +46,65 @@
 package com.teragrep.rlo_06.refactored.syslogMsg;
 
 import com.teragrep.buf_01.buffer.lease.TrackedLease;
-import com.teragrep.rlo_06.refactored.Claim;
-import com.teragrep.rlo_06.refactored.Result;
+import com.teragrep.rlo_06.refactored.queue.Fragment;
+import com.teragrep.rlo_06.refactored.queue.FragmentState;
+import com.teragrep.rlo_06.refactored.syslogMsg.header.PriorityFragment;
+import com.teragrep.rlo_06.refactored.syslogMsg.header.VersionClaim;
 
 import java.lang.foreign.MemorySegment;
-import java.util.List;
 
-public class RFC5424Claim implements Claim<List<Result<String>>> {
+public final class RFC5424Message implements Fragment {
+    private final Fragment[] schema;
+    private final FragmentState state;
+    public RFC5424Message() {
+        this(
+                new Fragment[] {
+                        new PriorityFragment(),
+                        //new VersionClaim()
+                }
+        );
+    }
+
+    public RFC5424Message(final Fragment[] schema) {
+        this(schema, FragmentState.IN_PROGRESS);
+    }
+
+    public RFC5424Message(final Fragment[] schema, final FragmentState state) {
+        this.schema = schema;
+        this.state = state;
+    }
 
     @Override
-    public Result<List<Result<String>>> advance(final List<TrackedLease<MemorySegment>> src) {
+    public FragmentState state() {
+        return state;
+    }
 
-        return null;
+    @Override
+    public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
+        final Fragment[] updatedSchema = new Fragment[schema.length];
+        for (int i = 0; i < schema.length; i++) {
+            final Fragment fragment = schema[i];
+            if (fragment.state().equals(FragmentState.IN_PROGRESS)) {
+                updatedSchema[i] = fragment.apply(trackedLease);
+            }
+
+            if (!trackedLease.hasNext()) {
+                break;
+            }
+            // Check if trackedLease hasNext
+            // Otherwise, return new copy of RFC5424Message
+        }
+
+        return new RFC5424Message(updatedSchema);
+    }
+
+    @Override
+    public TrackedLease<MemorySegment>[] leases() {
+        return new TrackedLease[0];
+    }
+
+    @Override
+    public boolean isStub() {
+        return false;
     }
 }
