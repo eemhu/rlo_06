@@ -9,4 +9,5 @@ public interface Fragment extends Stubable {
     public abstract FragmentState state();
     public abstract Fragment apply(final TrackedLease<MemorySegment> trackedLease);
     public abstract TrackedLease<MemorySegment>[] leases();
+    public abstract TrackedLease<MemorySegment>[] result();
 }

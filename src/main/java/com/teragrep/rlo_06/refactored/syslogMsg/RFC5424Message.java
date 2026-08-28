@@ -104,6 +104,11 @@ public final class RFC5424Message implements Fragment {
     }
 
     @Override
+    public TrackedLease<MemorySegment>[] result() {
+        return new TrackedLease[0];
+    }
+
+    @Override
     public boolean isStub() {
         return false;
     }

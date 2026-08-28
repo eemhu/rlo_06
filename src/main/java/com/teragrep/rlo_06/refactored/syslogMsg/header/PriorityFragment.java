@@ -145,6 +145,11 @@ public final class PriorityFragment implements Fragment {
     }
 
     @Override
+    public TrackedLease<MemorySegment>[] result() {
+        return new TrackedLease[0];
+    }
+
+    @Override
     public String toString() {
         return "PriorityFragment{" +
                 "applicableLeases=" + Arrays.toString(Arrays.stream(applicableLeases).map(lease -> {

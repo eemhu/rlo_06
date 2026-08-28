@@ -86,55 +86,44 @@ public final class VersionClaim implements Fragment {
 
     @Override
     public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
-      /*  final Claim<TrackedLease<MemorySegment>> nonZeroClaim = new DigitFragment(true);
-        final Claim<TrackedLease<MemorySegment>> digitClaim = new DigitFragment(false);
+        Fragment nonZeroFragment = new DigitFragment(true);
+        Fragment digitFragment = new DigitFragment(false);
+        Fragment digit2Fragment = new DigitFragment(false);
 
-        final Result<TrackedLease<MemorySegment>> firstDigitResult;
-        try {
-            firstDigitResult = nonZeroClaim.advance(src);
-        }
-        catch (final ClaimFailedException e) {
-            throw new ClaimFailedException(getClass(), "first non-zero digit is required for VERSION", e);
-        }
+        TrackedLease<MemorySegment>[] newLeases = new TrackedMemorySegmentLease[applicableLeases.length + 1];
+        System.arraycopy(applicableLeases, 0, newLeases, 0, applicableLeases.length);
 
-        Result<TrackedLease<MemorySegment>> secondDigitResult;
-        try {
-            secondDigitResult = digitClaim.advance(src);
-        }
-        catch (final ClaimFailedException e) {
-            // not required
-            secondDigitResult = resultLeaseStub;
-        }
+        List<TrackedLease<MemorySegment>> slices = new ArrayList<>();
 
-        Result<TrackedLease<MemorySegment>> thirdDigitResult;
-        try {
-            thirdDigitResult = digitClaim.advance(src);
-        }
-        catch (final ClaimFailedException e) {
-            // not required
-            thirdDigitResult = resultLeaseStub;
+        for (int i = 0; i < newLeases.length; i++) {
+            TrackedLease<MemorySegment> newLease = newLeases[i];
+            while (newLease.hasNext()) {
+                if (nonZeroFragment.state() == FragmentState.IN_PROGRESS) {
+                    nonZeroFragment = nonZeroFragment.apply(trackedLease);
+                    if (nonZeroFragment.state() == FragmentState.SUCCESSFUL) {
+                       //FIXME: slices.addAll(nonZeroFragment.leases());
+                    }
+                }
+                else if (digitFragment.state() == FragmentState.IN_PROGRESS) {
+                    digitFragment = digitFragment.apply(trackedLease);
+                }
+                else {
+                    digit2Fragment = digit2Fragment.apply(trackedLease);
+                }
+            }
         }
 
-        final List<TrackedLease<MemorySegment>> resultList = new ArrayList<>(3);
-
-        // Mandatory
-        resultList.add(firstDigitResult.value());
-
-        if (!secondDigitResult.isStub()) {
-            resultList.add(secondDigitResult.value());
-        }
-
-        if (!thirdDigitResult.isStub()) {
-            resultList.add(thirdDigitResult.value());
-        }
-
-        return new ResultImpl<>(ResultName.VERSION, resultList); */
         return null;
     }
 
     @Override
     public TrackedLease<MemorySegment>[] leases() {
         return applicableLeases;
+    }
+
+    @Override
+    public TrackedLease<MemorySegment>[] result() {
+        return new TrackedLease[0];
     }
 
     @Override

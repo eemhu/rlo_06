@@ -21,6 +21,11 @@ public final class FragmentStub implements Fragment{
     }
 
     @Override
+    public TrackedLease<MemorySegment>[] result() {
+        throw new UnsupportedOperationException("result() is not provided by the stub object.");
+    }
+
+    @Override
     public String toString() {
         return "FragmentStub{}";
     }
