@@ -57,6 +57,7 @@ public final class CharFragment implements Fragment {
 
     private final char targetChar;
     private final TrackedLease<MemorySegment>[] applicableLeases;
+    private final TrackedLease<MemorySegment>[] finalResult;
     private final FragmentState state;
 
     public CharFragment(final char targetChar) {
@@ -68,8 +69,13 @@ public final class CharFragment implements Fragment {
     }
 
     public CharFragment(final char targetChar, final TrackedLease<MemorySegment>[] applicableLeases, final FragmentState state) {
+        this(targetChar, applicableLeases, new TrackedMemorySegmentLease[0], state);
+    }
+
+    public CharFragment(final char targetChar, final TrackedLease<MemorySegment>[] applicableLeases, final TrackedLease<MemorySegment>[] finalResult, final FragmentState state) {
         this.targetChar = targetChar;
         this.applicableLeases = applicableLeases;
+        this.finalResult = finalResult;
         this.state = state;
     }
 
@@ -81,27 +87,25 @@ public final class CharFragment implements Fragment {
     @Override
     public Fragment apply(final TrackedLease<MemorySegment> trackedLease) {
         FragmentState newState;
-        final TrackedLease<MemorySegment>[] newApplicableLeases = new TrackedMemorySegmentLease[1];
-
-        if (trackedLease.hasNext()) {
-            trackedLease.mark();
-            final byte b = trackedLease.next();
-            System.out.println("char claim: " + (char)b);
+        final TrackedLease<MemorySegment>[] result = new TrackedMemorySegmentLease[1];
+        final TrackedLease<MemorySegment> current = trackedLease.sliceAt(trackedLease.currentPosition());
+        if (current.hasNext()) {
+            final byte b = current.next();
 
             if (b == targetChar) {
                 // Claim successful
-                newApplicableLeases[0] = trackedLease.sliceWithLength(trackedLease.currentPosition() - 1, 1);
+                result[0] = current.sliceWithLength(current.currentPosition() - 1, 1);
+                trackedLease.position(trackedLease.currentPosition() + current.currentPosition());
                 newState = FragmentState.SUCCESSFUL;
             }
             else {
-                trackedLease.reset();
                 newState = FragmentState.FAILED;
             }
         } else {
-            newState = FragmentState.FAILED;
+            newState = FragmentState.IN_PROGRESS; //FIXME: was FAILED, check if this works.
         }
 
-        return new CharFragment(targetChar, newApplicableLeases, newState);
+        return new CharFragment(targetChar, new TrackedMemorySegmentLease[0], result, newState);
     }
 
     @Override
@@ -111,7 +115,7 @@ public final class CharFragment implements Fragment {
 
     @Override
     public TrackedLease<MemorySegment>[] result() {
-        return new TrackedLease[0];
+        return finalResult;
     }
 
     @Override

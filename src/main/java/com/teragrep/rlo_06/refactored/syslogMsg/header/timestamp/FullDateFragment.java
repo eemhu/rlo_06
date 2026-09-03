@@ -14,6 +14,10 @@ public final class FullDateFragment implements Fragment {
     private final TrackedLease<MemorySegment>[] leases;
     private final TrackedLease<MemorySegment>[] finalResult;
 
+    public FullDateFragment() {
+        this(FragmentState.IN_PROGRESS, new TrackedMemorySegmentLease[0], new TrackedMemorySegmentLease[0]);
+    }
+
     public FullDateFragment(final FragmentState state, final TrackedLease<MemorySegment>[] leases, final TrackedLease<MemorySegment>[] finalResult) {
         this.state = state;
         this.leases = leases;
@@ -86,6 +90,7 @@ public final class FullDateFragment implements Fragment {
         final TrackedLease<MemorySegment>[] finalResult;
         if (newState == FragmentState.SUCCESSFUL) {
             // Move the origin leases to the correct positions on success
+            //TODO: Is this an issue if the next fragment fails and restarts from beginning??
             int endIndex = newLeases.length - 1;
             for (int i = beginIndex; i <= endIndex; i++) {
                 newLeases[i].position(positions[i]);
