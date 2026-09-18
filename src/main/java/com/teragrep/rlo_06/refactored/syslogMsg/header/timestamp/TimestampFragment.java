@@ -58,14 +58,17 @@ public final class TimestampFragment implements Fragment {
 
         FragmentState newState = FragmentState.IN_PROGRESS;
 
-        Fragment dateFragment = new FullDateFragment();
-        Fragment tFragment = new CharFragment('T');
-        Fragment timeFragment = new FullTimeFragment();
-        Fragment charFragment = new CharFragment('-');
+        Fragment dateFragment = new FullDateFragment(); // yyyy-mm-dd
+        Fragment tFragment = new CharFragment('T'); // T
+        Fragment timeFragment = new FullTimeFragment(); // hh:mm:ss.SSSSSSZ | hh:mm:ss.SSSSSS+hh:mm
+        Fragment charFragment = new CharFragment('-'); // NILVALUE
 
         final long[] positions = new long[newLeases.length];
         TrackedLease<MemorySegment>[] result = new TrackedMemorySegmentLease[0];
 
+        //TODO: This probably won't work properly with memorySegment length > 1
+        // due to an oversight. Need to check if current lease has more remaining
+        // and feed that to the next fragment as a starting point.
         for (int i = 0; i < newLeases.length; i++) {
             final TrackedLease<MemorySegment> current = newLeases[i].sliceAt(newLeases[i].currentPosition());
             // NILVALUE, has to be the first char
@@ -113,6 +116,7 @@ public final class TimestampFragment implements Fragment {
         }
 
 
+        //FIXME: On success origin lease position should change to where this fragment's part ends.
         if (newState == FragmentState.SUCCESSFUL) {
             // Move the origin leases to the correct positions on success
             //TODO: Is this an issue if the next fragment fails and restarts from beginning??

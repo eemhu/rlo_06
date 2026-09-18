@@ -59,6 +59,7 @@ import java.util.Arrays;
 
 public final class PriorityFragment implements Fragment {
     private final TrackedLease<MemorySegment>[] applicableLeases;
+    private final TrackedLease<MemorySegment>[] result;
     private final FragmentState state;
 
     public PriorityFragment() {
@@ -70,7 +71,12 @@ public final class PriorityFragment implements Fragment {
     }
 
     public PriorityFragment(final TrackedLease<MemorySegment>[] applicableLeases, final FragmentState state) {
+        this(applicableLeases, new TrackedMemorySegmentLease[0], state);
+    }
+
+    public PriorityFragment(final TrackedLease<MemorySegment>[] applicableLeases, final TrackedLease<MemorySegment>[] result, final FragmentState state) {
         this.applicableLeases = applicableLeases;
+        this.result = result;
         this.state = state;
     }
 
@@ -85,56 +91,71 @@ public final class PriorityFragment implements Fragment {
 
         final TrackedLease<MemorySegment>[] newLeases = new TrackedMemorySegmentLease[applicableLeases.length + 1];
         System.arraycopy(applicableLeases, 0, newLeases, 0, applicableLeases.length);
-        newLeases[applicableLeases.length] = leaseArg;
+        newLeases[newLeases.length - 1] = leaseArg;
+
+        final TrackedLease<MemorySegment>[] newResult = new TrackedMemorySegmentLease[newLeases.length];
 
         boolean insideTags = false;
 
-        int beginIndex=-1;
+        int beginIndex = -1;
+
 
         FragmentState currentState = FragmentState.IN_PROGRESS;
 
         for (int i = 0; i < newLeases.length && !currentState.equals(FragmentState.FAILED); i++) {
-            final TrackedLease<MemorySegment> lease = newLeases[i];
-            lease.mark();
+            final TrackedLease<MemorySegment> lease = newLeases[i].sliceAt(newLeases[i].currentPosition());
+
             while (lease.hasNext() && !currentState.equals(FragmentState.FAILED)) {
                 if (beginIndex == -1) {
                     beginIndex = i;
                 }
                 final byte b = lease.next();
+                if (b==0){ // FIXME: This is something to look at
+                    break;
+                }
 
                 if (!insideTags && b == '<') {
+                   // System.out.println("1");
                     // Claim start
                     insideTags = true;
                     currentState = FragmentState.IN_PROGRESS;
                     rv = new PriorityFragment(newLeases, currentState);
                 } else if (!insideTags) {
+                   // System.out.println("2");
                     // Failure!
-                    new ResettedLeases(newLeases).resetBetween(beginIndex, i);
+                   // new ResettedLeases(newLeases).resetBetween(beginIndex, i);
                     currentState = FragmentState.FAILED;
                     rv = new PriorityFragment(new TrackedMemorySegmentLease[0], currentState);
                 } else if (b == '>') {
+                   // System.out.println("3");
                     // tag done, claim ok?
-                    newLeases[applicableLeases.length] = lease.sliceWithLength(lease.currentMark(), lease.currentPosition() - lease.currentMark());
-                    newLeases[applicableLeases.length].mark(); //without this lease reset will fail
+                    //newLeases[applicableLeases.length] = lease.sliceWithLength(lease.currentMark(), lease.currentPosition() - lease.currentMark());
+                    //newLeases[applicableLeases.length].mark(); //without this lease reset will fail
                     currentState = FragmentState.SUCCESSFUL;
                     rv = new PriorityFragment(newLeases, currentState);
                 } else if (Character.isDigit(b)) {
+                   // System.out.println("4");
                     // inside tags and number
                     // this is fine.
                     currentState = FragmentState.IN_PROGRESS;
                     rv = new PriorityFragment(newLeases, currentState);
                 } else {
+                  //  System.out.println("5");
                     // Failure!
-                    new ResettedLeases(newLeases).resetBetween(beginIndex, i);
+                    // new ResettedLeases(newLeases).resetBetween(beginIndex, i);
                     currentState = FragmentState.FAILED;
                     rv = new PriorityFragment(new TrackedMemorySegmentLease[0], currentState);
                 }
             }
+
+            if (currentState.equals(FragmentState.IN_PROGRESS) || currentState.equals(FragmentState.SUCCESSFUL)) {
+                newResult[i] = lease.sliceWithLength(0, lease.currentPosition());
+            }
         }
 
-        if (!rv.isStub() && (rv.state() == FragmentState.IN_PROGRESS || rv.state() == FragmentState.SUCCESSFUL)) {
+        /*if (!rv.isStub() && (rv.state() == FragmentState.IN_PROGRESS || rv.state() == FragmentState.SUCCESSFUL)) {
             new ResettedLeases(newLeases).resetBetween(beginIndex, newLeases.length - 1);
-        }
+        }*/
 
         return rv;
     }
@@ -146,7 +167,7 @@ public final class PriorityFragment implements Fragment {
 
     @Override
     public TrackedLease<MemorySegment>[] result() {
-        return new TrackedLease[0];
+        return result;
     }
 
     @Override

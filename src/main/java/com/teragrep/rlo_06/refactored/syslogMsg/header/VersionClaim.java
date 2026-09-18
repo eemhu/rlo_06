@@ -93,15 +93,12 @@ public final class VersionClaim implements Fragment {
         TrackedLease<MemorySegment>[] newLeases = new TrackedMemorySegmentLease[applicableLeases.length + 1];
         System.arraycopy(applicableLeases, 0, newLeases, 0, applicableLeases.length);
 
-        List<TrackedLease<MemorySegment>> slices = new ArrayList<>();
-
         for (int i = 0; i < newLeases.length; i++) {
-            TrackedLease<MemorySegment> newLease = newLeases[i];
-            while (newLease.hasNext()) {
+            TrackedLease<MemorySegment> newLease = newLeases[i].sliceAt(newLeases[i].currentPosition());
                 if (nonZeroFragment.state() == FragmentState.IN_PROGRESS) {
                     nonZeroFragment = nonZeroFragment.apply(trackedLease);
                     if (nonZeroFragment.state() == FragmentState.SUCCESSFUL) {
-                       //FIXME: slices.addAll(nonZeroFragment.leases());
+
                     }
                 }
                 else if (digitFragment.state() == FragmentState.IN_PROGRESS) {
@@ -110,7 +107,7 @@ public final class VersionClaim implements Fragment {
                 else {
                     digit2Fragment = digit2Fragment.apply(trackedLease);
                 }
-            }
+
         }
 
         return null;

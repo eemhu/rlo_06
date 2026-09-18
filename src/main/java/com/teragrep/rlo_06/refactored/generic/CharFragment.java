@@ -95,7 +95,7 @@ public final class CharFragment implements Fragment {
             if (b == targetChar) {
                 // Claim successful
                 result[0] = current.sliceWithLength(current.currentPosition() - 1, 1);
-                trackedLease.position(trackedLease.currentPosition() + current.currentPosition());
+                //trackedLease.position(trackedLease.currentPosition() + current.currentPosition());
                 newState = FragmentState.SUCCESSFUL;
             }
             else {

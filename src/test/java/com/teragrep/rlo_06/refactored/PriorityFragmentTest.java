@@ -75,6 +75,7 @@ public final class PriorityFragmentTest {
 
             for (final TrackedLease<MemorySegment> lease : leases) {
                 priorityFragment = priorityFragment.apply(lease);
+                System.out.println(priorityFragment.state());
             }
 
             Assertions.assertEquals(FragmentState.SUCCESSFUL, priorityFragment.state());
